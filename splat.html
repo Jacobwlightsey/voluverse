@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Volu — walkable 3D tour (Gaussian splat)</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='9' y='9' width='14' height='14' transform='rotate(45 16 16)' fill='none' stroke='%236ee7ff' stroke-width='2.4'/%3E%3C/svg%3E">
+<style>
+  html,body{margin:0;height:100%;background:#06070a;color:#f4f6f9;font-family:'Space Grotesk',system-ui,sans-serif;overflow:hidden}
+  #stage{position:fixed;inset:0}
+  .hud{position:fixed;z-index:10;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.16em;font-size:10px;color:#6ee7ff;background:rgba(6,7,10,0.5);backdrop-filter:blur(6px);border:1px solid rgba(110,231,255,0.4);padding:6px 12px}
+  #badge{left:16px;top:16px}
+  #hint{right:16px;bottom:16px;color:rgba(244,246,249,0.7);border-color:rgba(255,255,255,0.14)}
+  #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20;background:#06070a}
+  .spin{width:34px;height:34px;border:3px solid rgba(110,231,255,0.3);border-top-color:#6ee7ff;border-radius:50%;animation:s .9s linear infinite}
+  @keyframes s{to{transform:rotate(360deg)}}
+  #loading .t{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;color:#8d95a6;text-transform:uppercase}
+  #err{display:none;max-width:520px;text-align:center;color:#ff9b9b;font-size:14px;line-height:1.6;padding:0 24px}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.184.0/build/three.module.js",
+  "@mkkellogg/gaussian-splats-3d": "https://unpkg.com/@mkkellogg/gaussian-splats-3d@0.4.7/build/gaussian-splats-3d.module.js"
+}}
+</script>
+</head>
+<body>
+<div id="stage"></div>
+<div id="badge" class="hud">◈ 3D tour · gaussian splat</div>
+<div id="hint" class="hud">drag to look · scroll to move</div>
+<div id="loading"><div class="spin"></div><div class="t" id="ltext">loading 3D tour…</div><div id="err"></div></div>
+<script type="module">
+  import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
+
+  const params = new URLSearchParams(location.search);
+  const src = params.get('src') || 'models/tour.ply';
+
+  const viewer = new GaussianSplats3D.Viewer({
+    rootElement: document.getElementById('stage'),
+    sharedMemoryForWorkers: false,
+    cameraUp: [0, -1, 0],                    // COLMAP world up is -Y
+    initialCameraPosition: [0.26, 0.06, -0.03],   // real training viewpoint (frame f0093)
+    initialCameraLookAt: [0.34, 0.06, 4.97],
+    sphericalHarmonicsDegree: 2,
+    antialiased: true,
+    dynamicScene: false,
+  });
+
+  viewer.addSplatScene(src, { progressiveLoad: true, showLoadingUI: false })
+    .then(() => { viewer.start(); window.__viewer = viewer; document.getElementById('loading').style.display = 'none'; })
+    .catch((e) => {
+      console.error(e);
+      document.getElementById('ltext').textContent = 'could not load tour';
+      const err = document.getElementById('err');
+      err.style.display = 'block';
+      err.textContent = 'Splat file not found or failed to parse (' + src + '). ' + (e && e.message ? e.message : '');
+    });
+</script>
+</body>
+</html>
